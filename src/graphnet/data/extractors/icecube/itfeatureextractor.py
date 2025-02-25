@@ -127,15 +127,11 @@ class ITFeatureExtractor(I3Extractor):
     def __call__(
         self, frame: "icetray.I3Frame", padding_value: Any = -1
     ) -> Dict[str, Any]:
-        """Extract truth-level information."""
-        is_mc = frame_is_montecarlo(frame, self._mctree)
-        is_noise = frame_is_noise(frame, self._mctree)
-        sim_type = self._find_data_type(is_mc, self._i3_file, frame)
-
+        """Extract feature-level information."""
         hlc_frame = frame['OfflineIceTopHLCTankPulses']
         
         output = {
-            #"OMKey": hlc_frame.keys()[0][0],
+            "OMKey": hlc_frame.keys()[0][0],
             "RunID": frame["I3EventHeader"].run_id,
             "SubrunID": frame["I3EventHeader"].sub_run_id,
             "EventID": frame["I3EventHeader"].event_id,
