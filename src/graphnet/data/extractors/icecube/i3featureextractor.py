@@ -300,3 +300,103 @@ class I3PulseNoiseTruthFlagIceCubeUpgrade(I3FeatureExtractorIceCube86):
                 output["truth_flag"].append(truth_flag)
 
         return output
+
+class ITFeatureExtractor(I3FeatureExtractor):
+    """Class for extracting reconstructed features for IceTop."""
+
+    def __call__(self, frame: "icetray.I3Frame") -> Dict[str, List[Any]]:
+        """Extract reconstructed features from `frame`.
+
+        Args:
+            frame: Physics (P) I3-frame from which to extract reconstructed
+                features.
+
+        Returns:
+            Dictionary of reconstructed features for all pulses in `pulsemap`,
+                in pure-python format.
+        """
+        padding_value: float = -1.0
+        output: Dict[str, List[Any]] = {
+            "charge": [],
+            "dom_time": [],
+            "dom_x": [],
+            "dom_y": [],
+            "hlc": [],
+            "event_time": [],
+        }
+        # Get OM data
+        if self._pulsemap in frame:
+            om_keys, data = get_om_keys_and_pulseseries(
+                frame,
+                self._pulsemap,
+                self._calibration,
+            )
+        else:
+            self.warning_once(f"Pulsemap {self._pulsemap} not found in frame.")
+            return output
+
+        event_time = frame["I3EventHeader"].start_time.mod_julian_day_double
+
+        for om_key in om_keys:
+            # Common values for each OM
+            x = self._gcd_dict[om_key].position.x
+            y = self._gcd_dict[om_key].position.y
+           
+            # Loop over pulses for each OM
+            pulses = data[om_key]
+            for pulse in pulses:
+                output["charge"].append(
+                    getattr(pulse, "charge", padding_value)
+                )
+                output["dom_time"].append(
+                    getattr(pulse, "time", padding_value)
+                )
+                output["dom_x"].append(x)
+                output["dom_y"].append(y)
+
+                output["event_time"].append(event_time)
+
+                # Pulse flags
+                flags = getattr(pulse, "flags", padding_value)
+                if flags == padding_value:
+                    output["hlc"].append(padding_value)
+                else:
+                    output["hlc"].append((pulse.flags >> 0) & 0x1)  # bit 0
+
+        return output
+
+    def _get_relative_dom_efficiency(
+        self, frame: "icetray.I3Frame", om_key: int, padding_value: float
+    ) -> float:
+        if (
+            "I3Calibration" in frame
+        ):  # Not available for e.g. mDOMs in IceCube Upgrade
+            rde = frame["I3Calibration"].dom_cal[om_key].relative_dom_eff
+        else:
+            try:
+                assert self._calibration is not None
+                rde = self._calibration.dom_cal[om_key].relative_dom_eff
+            except:  # noqa: E722
+                rde = padding_value
+        return rde
+
+    def _parse_awtd_flag(
+        self, pulse: Any, fadc_min_width_ns: float = 6.0
+    ) -> bool:
+        """Parse awtd flag from pulse width.
+
+        Returns True if the pulse was readout using the awtd digitizer.
+
+        Method by Tom Stuttard.
+
+        Notes from Tom:
+        Function to read the bits of the pulse flags and unpack them into
+        meaningful info Using pulse width rather than flags to separate FADC vs
+        ATWD pulses, due to a known issue.
+        https://github.com/icecube/icetray/issues/2721 Note that the issue
+        states to use 8ns, but I have found that actually 6ns is correct.
+        """
+        # Use pulse width to check whether a pulse is
+        # (a) FADC-only, or
+        # includes ATWD (and probably also FADC)
+        return pulse.width < (fadc_min_width_ns * icetray.I3Units.ns)
