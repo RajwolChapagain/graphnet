@@ -135,9 +135,7 @@ class ITTruthExtractor(I3Extractor):
         output = {
             "energy": frame["MCPrimary"].energy,
             "RunID": frame["I3EventHeader"].run_id,
-            "SubrunID": frame["I3EventHeader"].sub_run_id,
             "EventID": frame["I3EventHeader"].event_id,
-            "SubEventID": frame["I3EventHeader"].sub_event_id,
         }
 
         # Only InIceSplit P frames contain ML appropriate
