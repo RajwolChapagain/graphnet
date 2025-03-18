@@ -196,7 +196,7 @@ class GraphDefinition(Model):
         input_features = self._perturb_input(input_features)
 
         # Transform to pytorch tensor
-        input_features = torch.tensor(input_features, dtype=self.dtype)
+        input_features = torch.tensor(input_features.astype(float), dtype=self.dtype)
 
         # Standardize / Scale  node features
         input_features = self._detector(input_features, input_feature_names)
