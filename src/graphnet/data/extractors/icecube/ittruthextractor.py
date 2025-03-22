@@ -1,6 +1,7 @@
 """I3Extractor class(es) for extracting truth-level information."""
 
 import numpy as np
+import math
 import matplotlib.path as mpath
 from scipy.spatial import ConvexHull, Delaunay
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -133,7 +134,7 @@ class ITTruthExtractor(I3Extractor):
         sim_type = self._find_data_type(is_mc, self._i3_file, frame)
 
         output = {
-            "energy": frame["MCPrimary"].energy,
+            "energy": math.log(frame["MCPrimary"].energy, 10),
             "RunID": frame["I3EventHeader"].run_id,
             "EventID": frame["I3EventHeader"].event_id,
         }
