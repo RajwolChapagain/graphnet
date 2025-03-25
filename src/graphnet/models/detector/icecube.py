@@ -182,11 +182,11 @@ class IceTop(Detector):
     def feature_map(self) -> Dict[str, Callable]:
         """Map standardization functions to each dimension of input data."""
         feature_map = {
+            "charge": self._charge,
+            "dom_time": self._dom_time,
             "dom_x": self._dom_xyz,
             "dom_y": self._dom_xyz,
             #"dom_z": self._dom_xyz,
-            "dom_time": self._dom_time,
-            "charge": self._charge,
             #"rde": self._rde,
             #"pmt_area": self._pmt_area,
             #"hlc": self._identity,
