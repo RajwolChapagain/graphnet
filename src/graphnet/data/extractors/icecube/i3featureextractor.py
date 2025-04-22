@@ -1,5 +1,6 @@
 """I3Extractor class(es) for extracting specific, reconstructed features."""
 
+from numpy import isnan
 from typing import TYPE_CHECKING, Any, Dict, List
 from .i3extractor import I3Extractor
 from graphnet.data.extractors.icecube.utilities.frames import (
@@ -345,6 +346,9 @@ class ITFeatureExtractor(I3FeatureExtractor):
             # Loop over pulses for each OM
             pulses = data[om_key]
             for pulse in pulses:
+                if (isnan(getattr(pulse, "charge", padding_value))):
+                    continue
+
                 output["charge"].append(
                     getattr(pulse, "charge", padding_value)
                 )
