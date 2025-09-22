@@ -5,11 +5,11 @@ arguments:
         add_global_variables_after_pooling: false
         dynedge_layer_sizes: null
         features_subset: null
-        global_pooling_schemes: [min, max, mean, sum]
+        global_pooling_schemes: [max, mean]
         nb_inputs: 4
-        nb_neighbours: 8
-        post_processing_layer_sizes: null
-        readout_layer_sizes: null
+        nb_neighbours: 32
+        post_processing_layer_sizes: [256, 128]
+        readout_layer_sizes: [256]
       class_name: DynEdge
   graph_definition:
     ModelConfig:
@@ -20,28 +20,26 @@ arguments:
             arguments: {}
             class_name: IceTop
         dtype: null
-        nb_nearest_neighbours: 8
+        nb_nearest_neighbours: 32
         node_definition:
           ModelConfig:
             arguments: {}
             class_name: NodesAsPulses
         input_feature_names: [dom_x, dom_y, charge, dom_time]
       class_name: KNNGraph
-  optimizer_class: '!class torch.optim.adam Adam'
-  optimizer_kwargs: {eps: 0.001, lr: 0.001}
-  scheduler_class: '!class graphnet.training.callbacks PiecewiseLinearLR'
-  scheduler_config: {interval: step}
-  scheduler_kwargs:
-    factors: [0.01, 1, 0.01]
-    milestones: [0, 20.0, 80]
+  optimizer_class: '!class torch.optim.adamw AdamW'
+  optimizer_kwargs: {eps: 1e-8, lr: 0.001, weight_decay: 0.01}
+  scheduler_class: '!class torch.optim.lr_scheduler ReduceLROnPlateau'
+  scheduler_kwargs: {mode: 'min', patience: 5}
+  scheduler_config: {monitor: val_loss}
   tasks:
   - ModelConfig:
       arguments:
-        hidden_size: 128
+        hidden_size: 256
         loss_function:
           ModelConfig:
             arguments: {}
-            class_name: LogCoshLoss
+            class_name: MSELoss
         loss_weight: null
         prediction_labels: null
         target_labels: energy
