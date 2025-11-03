@@ -49,6 +49,7 @@ class ISeeCube(GNN):
             n_features: The number of features in the input data.
         """
         super().__init__(seq_length, hidden_dim)
+        self.seq_length = seq_length
         self.fourier_ext = FourierEncoder(
             seq_length=seq_length,
             mlp_dim=mlp_dim,
@@ -83,20 +84,36 @@ class ISeeCube(GNN):
         self.layer_norm = nn.LayerNorm(hidden_dim)
 
     def forward(self, data: Data) -> Tensor:
-        """Apply learnable forward pass."""
+        """Apply learnable forward pass for ISeeCube."""
+        
+        # Convert data.x to sequence: (batch_size, seq_len, features)
         x, _, _ = array_to_sequence(data.x, data.batch, padding_value=0)
-        x = self.fourier_ext(x)
-        batch_size = x.shape[0]
-
-        x += self.pos_embedding
-
+        batch_size, actual_seq_len, _ = x.shape
+    
+        # --- Fourier Embedding ---
+        # Pass actual_seq_len as tensor for safety
+        x = self.fourier_ext(x, seq_length=torch.tensor(actual_seq_len, device=x.device, dtype=x.dtype))
+    
+        # --- Positional Embedding ---
+        # Dynamically adjust pos_embedding to match actual sequence length
+        if self.pos_embedding.size(1) != actual_seq_len:
+            pos_emb = self.pos_embedding[:, :actual_seq_len, :]
+        else:
+            pos_emb = self.pos_embedding
+        x = x + pos_emb
+    
+        # --- Class and Register Tokens ---
         batch_class_token = self.class_token.expand(batch_size, -1, -1)
         batch_register_tokens = self.register_tokens.expand(batch_size, -1, -1)
         x = torch.cat([batch_class_token, batch_register_tokens, x], dim=1)
-
+    
+        # --- Encoder ---
         x = self.encoder(src_tokens=None, token_embeddings=x)
-        x = x["encoder_out"]
-
+        x = x["encoder_out"]  # shape: (batch_size, seq_len + 1 + num_register_tokens, hidden_dim)
+    
+        # --- Layer Norm ---
         x = self.layer_norm(x)
-
+    
+        # Return only the class token representation
         return x[:, 0]
+

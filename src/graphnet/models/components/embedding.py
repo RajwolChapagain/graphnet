@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.functional import Tensor
 
-from typing import Optional
+from typing import Optional, Union
 
 from pytorch_lightning import LightningModule
 
@@ -115,25 +115,47 @@ class FourierEncoder(LightningModule):
         seq_length: Tensor,
     ) -> Tensor:
         """Forward pass."""
-        length = torch.log10(seq_length.to(dtype=x.dtype))
-        embeddings = [self.sin_emb(4096 * x[:, :, :3]).flatten(-2)]  # Position
-
+        if not isinstance(seq_length, torch.Tensor):
+            seq_length = torch.tensor(seq_length, device=x.device, dtype=x.dtype)
+        else:
+            seq_length = seq_length.to(device=x.device, dtype=x.dtype)
+    
+        length = torch.log10(seq_length + 1e-6)
+    
+        batch_size, seq_length_int, _ = x.shape
+    
+        embeddings = []
+    
+        # Position (x, y, z)
+        embeddings.append(self.sin_emb(4096 * x[:, :, :3]).flatten(-2))
+    
+        # Charge
         if self.n_features >= 5:
-            embeddings.append(self.sin_emb(1024 * x[:, :, 4]))  # Charge
-
-        embeddings.append(self.sin_emb(4096 * x[:, :, 3]))  # Time
-
+            embeddings.append(self.sin_emb(1024 * x[:, :, 4]))
+    
+        # Time
+        embeddings.append(self.sin_emb(4096 * x[:, :, 3]))
+    
+        # Auxiliary
         if self.n_features >= 6:
-            embeddings.append(self.aux_emb(x[:, :, 5].long()))  # Auxiliary
-
-        embeddings.append(
-            self.sin_emb2(length).unsqueeze(1).expand(-1, max(seq_length), -1)
-        )  # Length
-
+            embeddings.append(self.aux_emb(x[:, :, 5].long()))
+    
+        # --- Fixed Length Embedding ---
+        length_emb = self.sin_emb2(length).flatten()  # 🧩 ensures shape [dim]
+        length_emb = (
+            length_emb
+            .unsqueeze(0)                              # [1, dim]
+            .unsqueeze(1)                              # [1, 1, dim]
+            .expand(batch_size, seq_length_int, -1)    # [B, L, dim]
+        )
+        embeddings.append(length_emb)
+    
+        # Combine embeddings
         x = torch.cat(embeddings, -1)
         x = self.mlp(x)
-
         return x
+    
+
 
 
 class SpacetimeEncoder(LightningModule):
