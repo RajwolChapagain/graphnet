@@ -80,12 +80,14 @@ class SQLiteWriter(GraphNeTWriter):
         self.debug(f"Saving to {output_file_path}")
         for table, df in data.items():
             if len(df) > 0:
+                is_truth_table = 'truth' in table.lower()
                 create_table_and_save_to_sql(
                     df,
                     table,
                     output_file_path,
                     default_type="FLOAT",
-                    integer_primary_key=len(df) <= n_events,
+                    #integer_primary_key=len(df) <= n_events,
+                    integer_primary_key=is_truth_table,
                     index_column=self._index_column,
                 )
                 saved_any = True
