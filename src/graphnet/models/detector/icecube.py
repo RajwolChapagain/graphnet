@@ -189,7 +189,7 @@ class IceTop(Detector):
             #"dom_z": self._dom_xyz,
             #"rde": self._rde,
             #"pmt_area": self._pmt_area,
-            #"hlc": self._identity,
+            "hlc": self._identity,
         }
         return feature_map
 
