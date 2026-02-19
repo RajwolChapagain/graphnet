@@ -561,7 +561,20 @@ class Dataset(
             features.append(features_pulsemap)
 
         if len(self._pulsemaps) > 0:
-            features = np.concatenate(features, axis=0)
+            features_fixed = []
+            for f in features:
+                f_array = np.array(f)
+                if f_array.ndim == 1:
+                    # Empty result - reshape to (0, num_features)
+                    if len(features_fixed) > 0:
+                        num_features = features_fixed[0].shape[1]
+                    else:
+                        num_features = len(self._features)  # Fallback to expected feature count
+                    f_array = f_array.reshape(0, num_features)
+                features_fixed.append(f_array)
+            
+            features = np.concatenate(features_fixed, axis=0)
+            #features = np.concatenate(features, axis=0)
 
         truth = self.query_table(
             self._truth_table, self._truth, sequential_index
